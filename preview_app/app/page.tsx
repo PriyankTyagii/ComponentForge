@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface GeneratedComponent {
   ts: string;
@@ -10,66 +10,40 @@ interface GeneratedComponent {
   timestamp: string;
 }
 
-// Design system token → actual value map
 const TOKENS: Record<string, string> = {
-  "primary":           "#6366f1",
-  "primary-dark":      "#4f46e5",
-  "primary-light":     "#818cf8",
-  "secondary":         "#0ea5e9",
-  "accent":            "#f59e0b",
-  "success":           "#10b981",
-  "error":             "#ef4444",
-  "surface":           "#ffffff",
-  "surface-dark":      "#1e1e2e",
-  "background":        "#f8fafc",
-  "background-dark":   "#0f0f1a",
-  "text-primary":      "#1e293b",
-  "text-secondary":    "#64748b",
-  "text-muted":        "#94a3b8",
-  "border":            "#e2e8f0",
-  "glass-bg":          "rgba(255,255,255,0.1)",
-  "glass-border":      "rgba(255,255,255,0.2)",
-  "shadow-glass":      "0 8px 32px rgba(31,38,135,0.15)",
-  "shadow-md":         "0 8px 16px rgba(0,0,0,0.1)",
-  "border-radius-sm":  "4px",
-  "border-radius":     "8px",
-  "border-radius-lg":  "12px",
-  "border-radius-xl":  "16px",
-  "border-radius-full":"9999px",
+  "primary": "#6366f1", "primary-dark": "#4f46e5", "primary-light": "#818cf8",
+  "secondary": "#0ea5e9", "accent": "#f59e0b", "success": "#10b981",
+  "error": "#ef4444", "surface": "#ffffff", "surface-dark": "#1e1e2e",
+  "background": "#f8fafc", "background-dark": "#0f0f1a",
+  "text-primary": "#1e293b", "text-secondary": "#64748b", "text-muted": "#94a3b8",
+  "border": "#e2e8f0", "glass-bg": "rgba(255,255,255,0.1)",
+  "glass-border": "rgba(255,255,255,0.2)", "shadow-glass": "0 8px 32px rgba(31,38,135,0.15)",
+  "shadow-md": "0 8px 16px rgba(0,0,0,0.1)", "border-radius-sm": "4px",
+  "border-radius": "8px", "border-radius-lg": "12px", "border-radius-xl": "16px",
+  "border-radius-full": "9999px",
 };
 
-// Replace #token-name with actual CSS values
 function resolveTokens(css: string): string {
-  // Sort by length descending so longer tokens match first (e.g. border-radius-lg before border-radius)
-  var keys = Object.keys(TOKENS).sort(function(a,b){ return b.length - a.length; });
+  var keys = Object.keys(TOKENS).sort(function(a,b){ return b.length-a.length; });
   var result = css;
   keys.forEach(function(k) {
-    // Match #token-name not followed by more hex chars
-    var re = new RegExp("#" + k.replace(/-/g,"\\-") + "(?![\\w-])", "g");
+    var re = new RegExp("#"+k.replace(/-/g,"\\-")+"(?![\\w-])","g");
     result = result.replace(re, TOKENS[k]);
   });
   return result;
 }
 
-// Extract inline template from TypeScript component
 function extractTemplateFromTs(ts: string): string {
-  // Match template: `...` or template: "..."
-  var backtick = ts.match(/template\s*:\s*`([\s\S]*?)`/);
-  if (backtick) return backtick[1].trim();
-  var single = ts.match(/template\s*:\s*'([\s\S]*?)'/);
-  if (single) return single[1].trim();
-  var dbl = ts.match(/template\s*:\s*"([\s\S]*?)"/);
-  if (dbl) return dbl[1].trim();
+  var bt = ts.match(/template\s*:\s*`([\s\S]*?)`/);
+  if (bt) return bt[1].trim();
+  var sq = ts.match(/template\s*:\s*'([\s\S]*?)'/);
+  if (sq) return sq[1].trim();
   return "";
 }
 
-// Extract inline styles from TypeScript component
 function extractStylesFromTs(ts: string): string {
-  // styles: [`...`] or styles: ["..."] or styles: `...`
   var arr = ts.match(/styles\s*:\s*\[`([\s\S]*?)`\]/);
   if (arr) return arr[1].trim();
-  var single = ts.match(/styles\s*:\s*\[`([\s\S]*?)`\]/);
-  if (single) return single[1].trim();
   var plain = ts.match(/styles\s*:\s*`([\s\S]*?)`/);
   if (plain) return plain[1].trim();
   return "";
@@ -77,274 +51,388 @@ function extractStylesFromTs(ts: string): string {
 
 function scssToPlainCss(scss: string): string {
   var css = scss;
-  css = css.replace(/@use[^\n]*/g, "");
-  css = css.replace(/@forward[^\n]*/g, "");
-  css = css.replace(/\$[\w-]+\s*:[^;]+;/g, "");
-  css = css.replace(/\$[\w-]+/g, "inherit");
-  css = css.replace(/::ng-deep/g, "");
-  css = css.replace(/@include[^;]+;/g, "");
-  css = css.replace(/@mixin[\s\S]*?\}/g, "");
-  css = css.replace(/:host\s*\{([\s\S]*?)\}/g, "$1");
-  // Flatten nesting
-  for (var i = 0; i < 5; i++) {
-    css = css.replace(
-      /([.#\w][^{@]*?)\s*\{\s*([^{}]*?)([.#&:\s][\w\s>~+.#:[\]"'=-]*?)\s*\{([^{}]*?)\}/g,
-      function(_, parent, before, child, inner) {
-        var p = parent.trim();
-        var c = child.trim().replace(/^&/, p);
-        return p + "{" + before + "}" + " " + c + "{" + inner + "}";
-      }
-    );
+  css = css.replace(/@use[^\n]*/g,"").replace(/@forward[^\n]*/g,"");
+  css = css.replace(/\$[\w-]+\s*:[^;]+;/g,"").replace(/\$[\w-]+/g,"inherit");
+  css = css.replace(/::ng-deep/g,"").replace(/@include[^;]+;/g,"").replace(/@mixin[\s\S]*?\}/g,"");
+  css = css.replace(/:host\s*\{([\s\S]*?)\}/g,"$1");
+  for (var i=0;i<5;i++) {
+    css = css.replace(/([.#\w][^{@]*?)\s*\{\s*([^{}]*?)([.#&:\s][\w\s>~+.#:[\]"'=-]*?)\s*\{([^{}]*?)\}/g,
+      function(_,parent,before,child,inner) {
+        var p=parent.trim(); var c=child.trim().replace(/^&/,p);
+        return p+"{"+before+"} "+c+"{"+inner+"}";
+      });
   }
   return resolveTokens(css.trim());
 }
 
 function angularToHtml(html: string, ts: string): string {
-  // If HTML is empty or just a comment, extract template from TS
-  var body = html.trim();
-  var isEmptyHtml = !body || /^<!--[\s\S]*?-->$/.test(body) || body.length < 20;
-  if (isEmptyHtml) {
-    body = extractTemplateFromTs(ts);
-  }
-  if (!body) return "<p style='color:#94a3b8;text-align:center'>No template found</p>";
-
-  // Extract array data from TS for *ngFor
-  var data: Record<string, any[]> = {};
-  var arrRe = /(\w+)\s*(?::[^=]*)?\s*=\s*\[([\s\S]*?)\];/g;
-  var mm: RegExpExecArray | null;
-  while ((mm = arrRe.exec(ts)) !== null) {
+  var data: Record<string,any[]>={};
+  var arrRe=/(\w+)\s*(?::[^=]*)?\s*=\s*\[([\s\S]*?)\];/g, mm: RegExpExecArray|null;
+  while((mm=arrRe.exec(ts))!==null){
     try {
-      var cleaned = mm[2]
-        .replace(/\/\/.*/g, "")
-        .replace(/(\w+)\s*:/g, '"$1":')
-        .replace(/'/g, '"')
-        .replace(/,(\s*[}\]])/g, "$1");
-      data[mm[1]] = JSON.parse("[" + cleaned + "]");
-    } catch(e) { data[mm[1]] = []; }
+      var cleaned=mm[2].replace(/\/\/.*/g,"").replace(/(\w+)\s*:/g,'"$1":').replace(/'/g,'"').replace(/,(\s*[}\]])/g,"$1");
+      data[mm[1]]=JSON.parse("["+cleaned+"]");
+    } catch(e){data[mm[1]]=[];}
   }
-
-  var out = body;
-
-  // Expand *ngFor
-  var safety = 0;
-  var ngforRe = /<([\w-]+)([^>]*)\*ngFor="let\s+(\w+)\s+of\s+(\w+)[^"]*"([^>]*)>([\s\S]*?)<\/\1>/;
-  while (ngforRe.test(out) && safety++ < 10) {
-    out = out.replace(ngforRe, function(_, tag, pre, itemVar, listVar, post, inner) {
-      var items: any[] = data[listVar] || [
+  var body=html.trim();
+  var isEmpty=!body||/^<!--[\s\S]*?-->$/.test(body)||body.length<20;
+  if(isEmpty) body=extractTemplateFromTs(ts);
+  if(!body) return "<p style='color:#94a3b8;text-align:center;font-family:sans-serif'>No template found</p>";
+  var out=body;
+  var safety=0;
+  var ngforRe=/<([\w-]+)([^>]*)\*ngFor="let\s+(\w+)\s+of\s+(\w+)[^"]*"([^>]*)>([\s\S]*?)<\/\1>/;
+  while(ngforRe.test(out)&&safety++<10){
+    out=out.replace(ngforRe,function(_,tag,pre,itemVar,listVar,post,inner){
+      var items:any[]=data[listVar]||[
         {title:"Item 1",value:"100",name:"One",label:"A",color:"#6366f1"},
         {title:"Item 2",value:"200",name:"Two",label:"B",color:"#0ea5e9"},
         {title:"Item 3",value:"300",name:"Three",label:"C",color:"#10b981"},
       ];
-      return items.map(function(item: any) {
-        var innerFilled = inner.replace(/\{\{\s*\w+\.(\w+)[^}]*\}\}/g, function(_2: string, prop: string) {
-          return item[prop] !== undefined ? String(item[prop]) : "";
+      return items.map(function(item:any){
+        var innerFilled=inner.replace(/\{\{\s*\w+\.(\w+)[^}]*\}\}/g,function(_2:string,prop:string){
+          return item[prop]!==undefined?String(item[prop]):"";
         });
-        var attrs = (pre + " " + post)
-          .replace(/\*ngFor="[^"]*"/g, "")
-          .replace(/\[ngStyle\]="(\{[^"]*\})"/g, function(_2: string, obj: string) {
-            try {
-              var o = JSON.parse(obj.replace(/'/g,'"').replace(/(\w[\w-]*):/g,'"$1":')) as Record<string,string>;
-              var parts: string[] = [];
-              Object.keys(o).forEach(function(k) {
-                var v = String(o[k]);
-                if (v.indexOf(".") > -1) {
-                  var vp = v.split(".");
-                  if (item[vp[1]] !== undefined) v = String(item[vp[1]]);
-                }
-                parts.push(k + ":" + v);
+        var attrs=(pre+" "+post).replace(/\*ngFor="[^"]*"/g,"")
+          .replace(/\[ngStyle\]="(\{[^"]*\})"/g,function(_2:string,obj:string){
+            try{
+              var o=JSON.parse(obj.replace(/'/g,'"').replace(/(\w[\w-]*):/g,'"$1":')) as Record<string,string>;
+              var parts:string[]=[];
+              Object.keys(o).forEach(function(k){
+                var v=String(o[k]);
+                if(v.indexOf(".")>-1){var vp=v.split(".");if(item[vp[1]]!==undefined)v=String(item[vp[1]]);}
+                parts.push(k+":"+v);
               });
-              return 'style="' + parts.join(";") + '"';
-            } catch(e) { return ""; }
+              return 'style="'+parts.join(";")+'"';
+            }catch(e){return "";}
           })
-          .replace(/\[[^\]]+\]="[^"]*"/g, "")
-          .replace(/\([^)]+\)="[^"]*"/g, "");
-        return "<" + tag + " " + attrs.trim() + ">" + innerFilled + "</" + tag + ">";
+          .replace(/\[[^\]]+\]="[^"]*"/g,"").replace(/\([^)]+\)="[^"]*"/g,"");
+        return "<"+tag+" "+attrs.trim()+">"+innerFilled+"</"+tag+">";
       }).join("\n");
     });
   }
-
-  // Replace {{ expr }}
-  out = out.replace(/\{\{\s*([\w.]+)[^}]*\}\}/g, function(_, expr) {
-    var parts = expr.split(".");
-    var key = parts[parts.length - 1];
-    var vals = Object.values(data);
-    for (var i2 = 0; i2 < vals.length; i2++) {
-      var arr = vals[i2];
-      if (Array.isArray(arr) && arr[0] && arr[0][key] !== undefined) return String(arr[0][key]);
-    }
+  out=out.replace(/\{\{\s*([\w.]+)[^}]*\}\}/g,function(_,expr){
+    var parts=expr.split(".");var key=parts[parts.length-1];
+    var vals=Object.values(data);
+    for(var i2=0;i2<vals.length;i2++){var arr=vals[i2];if(Array.isArray(arr)&&arr[0]&&arr[0][key]!==undefined)return String(arr[0][key]);}
     return key;
   });
-
-  // Strip remaining Angular syntax
-  out = out.replace(/\[ngStyle\]="[^"]*"/g, "");
-  out = out.replace(/\[ngClass\]="[^"]*"/g, "");
-  out = out.replace(/\[[^\]]+\]="[^"]*"/g, "");
-  out = out.replace(/\([^)]+\)="[^"]*"/g, "");
-  out = out.replace(/\*\w+="[^"]*"/g, "");
-  out = out.replace(/\b(formControlName|formGroup|routerLink|routerLinkActive|matInput|matPrefix|matSuffix|mat-raised-button|mat-button|mat-icon-button|mat-stroked-button|mat-flat-button)(?:="[^"]*")?/g, "");
-  out = out.replace(/<mat-icon[^>]*>([\s\S]*?)<\/mat-icon>/g, "<span>$1</span>");
-  out = out.replace(/<mat-form-field[^>]*>/g, '<div class="field">');
-  out = out.replace(/<\/mat-form-field>/g, "</div>");
-  out = out.replace(/<mat-label[^>]*>([\s\S]*?)<\/mat-label>/g, "<label>$1</label>");
-  out = out.replace(/<(mat-card|mat-toolbar|mat-nav-list|mat-list|mat-chip|mat-select|mat-option|mat-checkbox|mat-radio-button|mat-slide-toggle|mat-tab-group|mat-tab|mat-expansion-panel|mat-divider)([^>]*)>/g, '<div class="$1"$2>');
-  out = out.replace(/<\/(mat-card|mat-toolbar|mat-nav-list|mat-list|mat-chip|mat-select|mat-option|mat-checkbox|mat-radio-button|mat-slide-toggle|mat-tab-group|mat-tab|mat-expansion-panel|mat-divider)>/g, "</div>");
+  out=out.replace(/\[ngStyle\]="[^"]*"/g,"").replace(/\[ngClass\]="[^"]*"/g,"");
+  out=out.replace(/\[[^\]]+\]="[^"]*"/g,"").replace(/\([^)]+\)="[^"]*"/g,"");
+  out=out.replace(/\*\w+="[^"]*"/g,"");
+  out=out.replace(/\b(formControlName|formGroup|routerLink|routerLinkActive|matInput|matPrefix|matSuffix|mat-raised-button|mat-button|mat-icon-button|mat-stroked-button|mat-flat-button)(?:="[^"]*")?/g,"");
+  out=out.replace(/<mat-icon[^>]*>([\s\S]*?)<\/mat-icon>/g,"<span>$1</span>");
+  out=out.replace(/<mat-form-field[^>]*>/g,'<div class="field">').replace(/<\/mat-form-field>/g,"</div>");
+  out=out.replace(/<mat-label[^>]*>([\s\S]*?)<\/mat-label>/g,"<label>$1</label>");
+  out=out.replace(/<(mat-card|mat-toolbar|mat-nav-list|mat-list|mat-chip|mat-select|mat-option|mat-checkbox|mat-radio-button|mat-slide-toggle|mat-tab-group|mat-tab|mat-expansion-panel|mat-divider)([^>]*)>/g,'<div class="$1"$2>');
+  out=out.replace(/<\/(mat-card|mat-toolbar|mat-nav-list|mat-list|mat-chip|mat-select|mat-option|mat-checkbox|mat-radio-button|mat-slide-toggle|mat-tab-group|mat-tab|mat-expansion-panel|mat-divider)>/g,"</div>");
   return out.trim();
 }
 
 function buildSrcdoc(c: GeneratedComponent): string {
-  // Get CSS — prefer SCSS block, fallback to inline styles from TS
-  var rawCss = c.scss.trim();
-  if (!rawCss || rawCss.length < 10) rawCss = extractStylesFromTs(c.ts);
-  var css = scssToPlainCss(rawCss);
-  var body = angularToHtml(c.html, c.ts);
-
-  var parts = [
+  var rawCss=c.scss.trim();
+  if(!rawCss||rawCss.length<10) rawCss=extractStylesFromTs(c.ts);
+  var css=scssToPlainCss(rawCss);
+  var body=angularToHtml(c.html,c.ts);
+  return [
     "<!DOCTYPE html><html><head><meta charset='UTF-8'>",
-    "<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap' rel='stylesheet'>",
+    "<link href='https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap' rel='stylesheet'>",
     "<style>",
     "*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}",
-    "body{background:#0f0f1a;font-family:'Inter',sans-serif;padding:2rem;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:1rem}",
-    "input,button,select,textarea{font-family:inherit}",
-    "button{cursor:pointer}",
-    ".field{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}",
-    ".field label{font-size:.75rem;color:#94a3b8}",
-    ".field input,.field textarea{padding:8px 12px;border-radius:8px;border:1px solid #334155;background:rgba(255,255,255,.05);color:#e2e8f0;width:100%}",
+    "body{background:#111827;font-family:'DM Sans',sans-serif;padding:2.5rem;min-height:100vh;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:1.5rem}",
+    "input,button,select,textarea{font-family:inherit}button{cursor:pointer}",
+    ".field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}",
+    ".field label{font-size:.75rem;color:#9ca3af;font-weight:500;letter-spacing:.04em;text-transform:uppercase}",
+    ".field input,.field textarea{padding:10px 14px;border-radius:10px;border:1px solid #374151;background:rgba(255,255,255,.06);color:#f9fafb;font-size:.9rem;outline:none;transition:border .2s}",
+    ".field input:focus,.field textarea:focus{border-color:#6366f1}",
     css,
     "</style></head><body>",
     body,
     "</body></html>"
-  ];
-  return parts.join("\n");
+  ].join("\n");
 }
+
+const SUGGESTIONS = [
+  "A glassmorphism login card with email and password",
+  "A dashboard stats card with revenue, users and growth",
+  "A responsive navbar with dark mode toggle",
+  "A pricing table with three tier cards",
+  "A signup form with validation states",
+  "A notification toast component",
+];
 
 export default function Home() {
   const [prompt, setPrompt] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [loading, setLoading] = useState(false);
-  const [component, setComponent] = useState<GeneratedComponent | null>(null);
+  const [component, setComponent] = useState<GeneratedComponent|null>(null);
   const [history, setHistory] = useState<GeneratedComponent[]>([]);
   const [activeTab, setActiveTab] = useState<"preview"|"ts"|"html"|"scss"|"debug">("preview");
   const [error, setError] = useState("");
   const [isFollowUp, setIsFollowUp] = useState(false);
   const [srcdoc, setSrcdoc] = useState("");
+  const [showKey, setShowKey] = useState(false);
+  const [copied, setCopied] = useState("");
   const conversationRef = useRef<Array<{role:string;content:string}>>([]);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("cf_apikey");
+    if (saved) setApiKey(saved);
+  }, []);
+
+  const saveKey = (k: string) => { setApiKey(k); localStorage.setItem("cf_apikey", k); };
 
   const generate = async () => {
-    if (!prompt.trim() || !apiKey.trim()) { setError("Enter prompt and Groq API key."); return; }
-    setError(""); setLoading(true);
+    if (!prompt.trim()||!apiKey.trim()){setError("Enter both a prompt and your Groq API key.");return;}
+    setError("");setLoading(true);
     try {
-      const res = await fetch("/api/generate", {
-        method:"POST", headers:{"Content-Type":"application/json"},
-        body: JSON.stringify({prompt:prompt.trim(), apiKey:apiKey.trim(), conversationHistory:conversationRef.current}),
-      });
+      const res = await fetch("/api/generate",{method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({prompt:prompt.trim(),apiKey:apiKey.trim(),conversationHistory:conversationRef.current})});
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Failed");
-      const nc: GeneratedComponent = {ts:data.ts||"", html:data.html||"", scss:data.scss||"", prompt, timestamp:new Date().toLocaleTimeString()};
-      conversationRef.current = [...conversationRef.current, {role:"user",content:prompt}, {role:"assistant",content:data.raw||""}];
-      const doc = buildSrcdoc(nc);
-      setSrcdoc(doc);
-      setComponent(nc);
-      setHistory(p=>[nc,...p].slice(0,10));
-      setIsFollowUp(true); setPrompt(""); setActiveTab("preview");
-    } catch(e:any) { setError(e.message); } finally { setLoading(false); }
+      if(!res.ok) throw new Error(data.error||"Generation failed");
+      const nc: GeneratedComponent={ts:data.ts||"",html:data.html||"",scss:data.scss||"",prompt,timestamp:new Date().toLocaleTimeString()};
+      conversationRef.current=[...conversationRef.current,{role:"user",content:prompt},{role:"assistant",content:data.raw||""}];
+      const doc=buildSrcdoc(nc);
+      setSrcdoc(doc);setComponent(nc);setHistory(p=>[nc,...p].slice(0,8));
+      setIsFollowUp(true);setPrompt("");setActiveTab("preview");
+    } catch(e:any){setError(e.message);}finally{setLoading(false);}
   };
 
-  const reset = () => { conversationRef.current=[]; setIsFollowUp(false); setComponent(null); setPrompt(""); setError(""); setSrcdoc(""); };
+  const reset = () => {conversationRef.current=[];setIsFollowUp(false);setComponent(null);setPrompt("");setError("");setSrcdoc("");};
+
+  const copyCode = (text: string, label: string) => {
+    navigator.clipboard.writeText(text);setCopied(label);
+    setTimeout(()=>setCopied(""),2000);
+  };
 
   const exportTsx = () => {
-    if (!component) return;
-    var esc = component.html.replace(/`/g,"\\`").replace(/\$/g,"\\$");
-    var lines = ['import React from "react";', "const styles = `" + component.scss + "`;", "export default function Preview() {", "  return (<><style dangerouslySetInnerHTML={{__html:styles}}/><div dangerouslySetInnerHTML={{__html:`" + esc + "`}}/></>);", "}"];
-    var blob = new Blob([lines.join("\n")], {type:"text/plain"});
-    var url = URL.createObjectURL(blob); var a = document.createElement("a"); a.href=url; a.download="component.tsx"; a.click(); URL.revokeObjectURL(url);
+    if(!component) return;
+    var esc=component.html.replace(/`/g,"\\`").replace(/\$/g,"\\$");
+    var lines=['import React from "react";',"const styles = `"+component.scss+"`;",
+      "export default function Preview() {",
+      "  return (<><style dangerouslySetInnerHTML={{__html:styles}}/><div dangerouslySetInnerHTML={{__html:`"+esc+"`}}/></>);","}"];
+    var blob=new Blob([lines.join("\n")],{type:"text/plain"});
+    var url=URL.createObjectURL(blob);var a=document.createElement("a");
+    a.href=url;a.download="component.tsx";a.click();URL.revokeObjectURL(url);
   };
 
-  const B: React.CSSProperties = {background:"transparent",border:"1px solid #334155",color:"#94a3b8",borderRadius:8,padding:"8px 12px",cursor:"pointer",fontSize:"0.85rem",width:"100%"};
-  const I: React.CSSProperties = {width:"100%",padding:"8px 12px",borderRadius:8,border:"1px solid #334155",background:"rgba(255,255,255,0.05)",color:"#e2e8f0",fontSize:"0.85rem",outline:"none"};
+  const tabs = [
+    {id:"preview",label:"Preview",icon:"◉"},
+    {id:"ts",label:"TypeScript",icon:"⬡"},
+    {id:"html",label:"HTML",icon:"⬢"},
+    {id:"scss",label:"SCSS",icon:"◈"},
+    {id:"debug",label:"Debug",icon:"⚙"},
+  ] as const;
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#0f0f1a",color:"#e2e8f0",fontFamily:"Inter,sans-serif"}}>
-      <header style={{borderBottom:"1px solid rgba(255,255,255,0.1)",padding:"12px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-        <div>
-          <h1 style={{color:"#6366f1",fontWeight:700,fontSize:"1.05rem"}}>🏗️ Guided Component Architect</h1>
-          <p style={{color:"#64748b",fontSize:"0.7rem"}}>Live Preview · Groq + Llama 3.3</p>
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"#0a0a0f",color:"#e2e8f0",fontFamily:"'DM Sans',sans-serif",overflow:"hidden"}}>
+
+      {/* Top nav */}
+      <nav style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 24px",height:56,borderBottom:"1px solid rgba(255,255,255,0.06)",flexShrink:0,background:"rgba(10,10,15,0.8)",backdropFilter:"blur(12px)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{width:28,height:28,borderRadius:8,background:"linear-gradient(135deg,#6366f1,#8b5cf6)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:14}}>⚒</div>
+          <span style={{fontWeight:700,fontSize:"0.95rem",letterSpacing:"-0.01em",color:"#f8fafc"}}>ComponentForge</span>
+          <span style={{fontSize:"0.65rem",padding:"2px 7px",borderRadius:20,background:"rgba(99,102,241,0.15)",color:"#818cf8",fontWeight:600,letterSpacing:"0.04em"}}>BETA</span>
         </div>
-        <button onClick={reset} style={{...B,width:"auto",fontSize:"0.75rem"}}>🔄 New</button>
-      </header>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {isFollowUp && (
+            <button onClick={reset} style={{fontSize:"0.78rem",padding:"6px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,0.08)",color:"#94a3b8",background:"rgba(255,255,255,0.03)",cursor:"pointer",transition:"all .2s"}}>
+              + New component
+            </button>
+          )}
+          <a href="https://github.com/PriyankTyagii/ComponentForge" target="_blank" rel="noreferrer"
+            style={{fontSize:"0.78rem",padding:"6px 14px",borderRadius:8,border:"1px solid rgba(255,255,255,0.08)",color:"#94a3b8",background:"rgba(255,255,255,0.03)",cursor:"pointer",textDecoration:"none"}}>
+            GitHub ↗
+          </a>
+        </div>
+      </nav>
 
       <div style={{display:"flex",flex:1,overflow:"hidden"}}>
-        <div style={{width:280,flexShrink:0,borderRight:"1px solid rgba(255,255,255,0.1)",display:"flex",flexDirection:"column",padding:14,gap:12,overflowY:"auto"}}>
-          <div>
-            <label style={{color:"#94a3b8",fontSize:"0.72rem",display:"block",marginBottom:5}}>Groq API Key</label>
-            <input type="password" value={apiKey} onChange={e=>setApiKey(e.target.value)} placeholder="gsk_..." style={I}/>
-            <p style={{color:"#475569",fontSize:"0.68rem",marginTop:3}}>Free · console.groq.com</p>
-          </div>
-          <div style={{flex:1}}>
-            <label style={{color:"#94a3b8",fontSize:"0.72rem",display:"block",marginBottom:5}}>{isFollowUp?"✏️ Follow-up":"📝 Describe component"}</label>
-            <textarea value={prompt} onChange={e=>setPrompt(e.target.value)} rows={6}
-              placeholder={isFollowUp?"Now make the button rounded...":"A login card with glassmorphism..."}
-              style={{...I,resize:"none"}}
-              onKeyDown={e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))generate();}}/>
-            <p style={{color:"#475569",fontSize:"0.68rem",marginTop:3}}>Ctrl+Enter to generate</p>
-          </div>
-          <button onClick={generate} disabled={loading}
-            style={{width:"100%",padding:10,borderRadius:8,background:loading?"#4338ca":"#6366f1",color:"white",fontWeight:600,fontSize:"0.9rem",border:"none",cursor:loading?"not-allowed":"pointer",opacity:loading?0.75:1}}>
-            {loading?"⚙️ Generating...":isFollowUp?"✏️ Apply Edit":"✨ Generate"}
-          </button>
-          {error && <div style={{background:"rgba(239,68,68,0.1)",color:"#f87171",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,padding:"8px 12px",fontSize:"0.75rem"}}>{error}</div>}
-          {component && <button onClick={exportTsx} style={B}>📦 Export .tsx</button>}
-          {history.length>1 && (
-            <div>
-              <p style={{color:"#475569",fontSize:"0.68rem",marginBottom:5}}>History</p>
-              {history.slice(1).map((h,i)=>(
-                <button key={i} onClick={()=>{ const d=buildSrcdoc(h); setSrcdoc(d); setComponent(h); setActiveTab("preview"); }}
-                  style={{...B,textAlign:"left",marginBottom:4,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                  {h.timestamp} · {h.prompt.slice(0,24)}...
+
+        {/* Sidebar */}
+        <div style={{width:300,flexShrink:0,borderRight:"1px solid rgba(255,255,255,0.06)",display:"flex",flexDirection:"column",background:"rgba(255,255,255,0.015)"}}>
+
+          {/* API Key section */}
+          <div style={{padding:"16px 16px 0"}}>
+            <div style={{borderRadius:12,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.03)",overflow:"hidden"}}>
+              <div style={{padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.05)",display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+                <span style={{fontSize:"0.72rem",fontWeight:600,color:"#64748b",letterSpacing:"0.05em",textTransform:"uppercase"}}>Groq API Key</span>
+                <a href="https://console.groq.com" target="_blank" rel="noreferrer" style={{fontSize:"0.68rem",color:"#6366f1",textDecoration:"none"}}>Get free key ↗</a>
+              </div>
+              <div style={{padding:"10px 14px",display:"flex",gap:6,alignItems:"center"}}>
+                <input type={showKey?"text":"password"} value={apiKey} onChange={e=>saveKey(e.target.value)} placeholder="gsk_..."
+                  style={{flex:1,background:"transparent",border:"none",outline:"none",color:"#e2e8f0",fontSize:"0.82rem",fontFamily:"monospace"}}/>
+                <button onClick={()=>setShowKey(!showKey)} style={{background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:14,padding:2}}>
+                  {showKey?"●":"○"}
                 </button>
-              ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Prompt area */}
+          <div style={{padding:"12px 16px",flex:1,display:"flex",flexDirection:"column",gap:10}}>
+            <label style={{fontSize:"0.72rem",fontWeight:600,color:"#64748b",letterSpacing:"0.05em",textTransform:"uppercase"}}>
+              {isFollowUp ? "✦ Refine component" : "✦ Describe component"}
+            </label>
+            <div style={{position:"relative",flex:1}}>
+              <textarea ref={textareaRef} value={prompt} onChange={e=>setPrompt(e.target.value)} rows={7}
+                placeholder={isFollowUp
+                  ? "Now make the button fully rounded...\nAdd a dark mode toggle...\nChange the primary color..."
+                  : "A glassmorphism login card with\nemail, password and a sign-in button..."}
+                style={{width:"100%",height:"100%",minHeight:140,padding:"12px 14px",borderRadius:12,
+                  border:"1px solid rgba(255,255,255,0.07)",background:"rgba(255,255,255,0.03)",
+                  color:"#e2e8f0",fontSize:"0.85rem",outline:"none",resize:"none",lineHeight:1.6,
+                  fontFamily:"'DM Sans',sans-serif",transition:"border .2s"}}
+                onKeyDown={e=>{if(e.key==="Enter"&&(e.metaKey||e.ctrlKey))generate();}}/>
+              <span style={{position:"absolute",bottom:10,right:12,fontSize:"0.65rem",color:"#334155"}}>⌘↵</span>
+            </div>
+
+            {/* Suggestions */}
+            {!isFollowUp && (
+              <div style={{display:"flex",flexDirection:"column",gap:4}}>
+                <span style={{fontSize:"0.68rem",color:"#334155",fontWeight:500}}>Try these →</span>
+                <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                  {SUGGESTIONS.slice(0,4).map((s,i)=>(
+                    <button key={i} onClick={()=>setPrompt(s)}
+                      style={{fontSize:"0.68rem",padding:"4px 8px",borderRadius:6,border:"1px solid rgba(255,255,255,0.06)",
+                        background:"rgba(255,255,255,0.02)",color:"#64748b",cursor:"pointer",textAlign:"left",transition:"all .15s"}}>
+                      {s.split(" ").slice(0,4).join(" ")}...
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <button onClick={generate} disabled={loading}
+              style={{width:"100%",padding:"11px",borderRadius:10,
+                background:loading?"rgba(99,102,241,0.5)":"linear-gradient(135deg,#6366f1,#8b5cf6)",
+                color:"white",fontWeight:600,fontSize:"0.88rem",border:"none",
+                cursor:loading?"not-allowed":"pointer",letterSpacing:"0.01em",
+                boxShadow:loading?"none":"0 4px 20px rgba(99,102,241,0.3)",transition:"all .2s"}}>
+              {loading ? "⚙ Generating..." : isFollowUp ? "↺ Apply refinement" : "✦ Generate component"}
+            </button>
+
+            {error && (
+              <div style={{borderRadius:10,padding:"10px 12px",background:"rgba(239,68,68,0.08)",
+                border:"1px solid rgba(239,68,68,0.2)",color:"#fca5a5",fontSize:"0.78rem",lineHeight:1.5}}>
+                {error}
+              </div>
+            )}
+
+            {component && (
+              <div style={{display:"flex",gap:6}}>
+                <button onClick={exportTsx} style={{flex:1,padding:"8px",borderRadius:8,border:"1px solid rgba(255,255,255,0.07)",
+                  color:"#94a3b8",background:"rgba(255,255,255,0.02)",fontSize:"0.78rem",cursor:"pointer"}}>
+                  ↓ Export .tsx
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* History */}
+          {history.length > 1 && (
+            <div style={{borderTop:"1px solid rgba(255,255,255,0.05)",padding:"12px 16px"}}>
+              <p style={{fontSize:"0.68rem",color:"#334155",fontWeight:600,letterSpacing:"0.05em",textTransform:"uppercase",marginBottom:8}}>History</p>
+              <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                {history.slice(1).map((h,i)=>(
+                  <button key={i} onClick={()=>{const d=buildSrcdoc(h);setSrcdoc(d);setComponent(h);setActiveTab("preview");}}
+                    style={{textAlign:"left",padding:"7px 10px",borderRadius:8,border:"1px solid transparent",
+                      background:"rgba(255,255,255,0.02)",color:"#475569",fontSize:"0.72rem",cursor:"pointer",
+                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",transition:"all .15s"}}>
+                    <span style={{color:"#334155",marginRight:6}}>{h.timestamp}</span>
+                    {h.prompt.slice(0,28)}...
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
 
+        {/* Main panel */}
         <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
           {component ? (
             <>
-              <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,0.1)",padding:"0 16px",flexShrink:0}}>
-                {(["preview","ts","html","scss","debug"] as const).map(tab=>(
-                  <button key={tab} onClick={()=>setActiveTab(tab)}
-                    style={{padding:"11px 14px",fontSize:"0.82rem",fontWeight:500,border:"none",
-                      borderBottom:"2px solid "+(activeTab===tab?"#6366f1":"transparent"),
-                      color:activeTab===tab?"#6366f1":"#64748b",background:"transparent",cursor:"pointer"}}>
-                    {tab==="preview"?"👁 Preview":tab==="ts"?"🟦 TS":tab==="html"?"🟧 HTML":tab==="scss"?"🎨 SCSS":"🐛 Debug"}
+              {/* Tab bar */}
+              <div style={{display:"flex",alignItems:"center",borderBottom:"1px solid rgba(255,255,255,0.06)",
+                padding:"0 20px",gap:2,flexShrink:0,background:"rgba(255,255,255,0.01)"}}>
+                {tabs.map(tab=>(
+                  <button key={tab.id} onClick={()=>setActiveTab(tab.id)}
+                    style={{padding:"14px 16px",fontSize:"0.8rem",fontWeight:500,border:"none",
+                      borderBottom:"2px solid "+(activeTab===tab.id?"#6366f1":"transparent"),
+                      color:activeTab===tab.id?"#818cf8":"#475569",
+                      background:"transparent",cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all .15s"}}>
+                    <span style={{fontSize:10}}>{tab.icon}</span>
+                    {tab.label}
                   </button>
                 ))}
+                {/* Component info */}
+                <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:"0.7rem",color:"#34d399",padding:"3px 10px",borderRadius:20,
+                    background:"rgba(16,185,129,0.1)",border:"1px solid rgba(16,185,129,0.2)"}}>
+                    ✓ Generated
+                  </span>
+                  {(activeTab==="ts"||activeTab==="html"||activeTab==="scss") && (
+                    <button onClick={()=>copyCode(activeTab==="ts"?component.ts:activeTab==="html"?component.html:component.scss, activeTab)}
+                      style={{fontSize:"0.72rem",padding:"4px 10px",borderRadius:6,border:"1px solid rgba(255,255,255,0.07)",
+                        color:copied===activeTab?"#34d399":"#475569",background:"rgba(255,255,255,0.02)",cursor:"pointer"}}>
+                      {copied===activeTab?"✓ Copied":"Copy"}
+                    </button>
+                  )}
+                </div>
               </div>
-              <div style={{flex:1,overflow:"hidden"}}>
+
+              {/* Content */}
+              <div style={{flex:1,overflow:"hidden",position:"relative"}}>
                 {activeTab==="preview" && srcdoc && (
-                  <iframe key={srcdoc.length + component.timestamp} srcDoc={srcdoc}
-                    style={{width:"100%",height:"100%",border:"none",background:"#0f0f1a"}}
+                  <iframe key={srcdoc.length+component.timestamp} srcDoc={srcdoc}
+                    style={{width:"100%",height:"100%",border:"none",background:"#111827"}}
                     sandbox="allow-scripts allow-same-origin" title="Preview"/>
                 )}
                 {activeTab==="debug" && (
-                  <pre style={{height:"100%",overflow:"auto",padding:16,background:"#0a0a14",color:"#86efac",fontFamily:"monospace",fontSize:"0.7rem",lineHeight:1.5,margin:0,whiteSpace:"pre-wrap"}}>
+                  <pre style={{height:"100%",overflow:"auto",padding:20,background:"#050508",
+                    color:"#4ade80",fontFamily:"'JetBrains Mono',monospace",fontSize:"0.7rem",lineHeight:1.6,margin:0,whiteSpace:"pre-wrap"}}>
                     {srcdoc}
                   </pre>
                 )}
                 {(activeTab==="ts"||activeTab==="html"||activeTab==="scss") && (
-                  <pre style={{height:"100%",overflow:"auto",padding:16,background:"#0d0d1a",color:"#a5b4fc",fontFamily:"monospace",fontSize:"0.78rem",lineHeight:1.6,margin:0}}>
+                  <pre style={{height:"100%",overflow:"auto",padding:20,
+                    background:"#050508",color:"#a5b4fc",fontFamily:"'JetBrains Mono',monospace",
+                    fontSize:"0.78rem",lineHeight:1.7,margin:0}}>
                     <code>{activeTab==="ts"?component.ts:activeTab==="html"?component.html:component.scss}</code>
                   </pre>
                 )}
               </div>
             </>
           ) : (
-            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:14}}>
-              <div style={{fontSize:"3.5rem"}}>🏗️</div>
-              <p style={{color:"#475569",fontSize:"1rem",fontWeight:500}}>Enter a prompt to get started</p>
-              <div style={{color:"#334155",fontSize:"0.82rem",textAlign:"center",lineHeight:2}}>
-                <p>💡 &quot;A login card with glassmorphism&quot;</p>
-                <p>💡 &quot;A dashboard stats card&quot;</p>
-                <p>💡 &quot;A responsive navbar&quot;</p>
+            /* Empty state */
+            <div style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:32,padding:40}}>
+              <div style={{textAlign:"center"}}>
+                <div style={{width:72,height:72,borderRadius:20,background:"linear-gradient(135deg,rgba(99,102,241,0.2),rgba(139,92,246,0.2))",
+                  border:"1px solid rgba(99,102,241,0.2)",display:"flex",alignItems:"center",justifyContent:"center",
+                  fontSize:32,margin:"0 auto 20px"}}>⚒</div>
+                <h2 style={{fontSize:"1.4rem",fontWeight:700,color:"#f1f5f9",letterSpacing:"-0.02em",marginBottom:8}}>
+                  ComponentForge
+                </h2>
+                <p style={{color:"#475569",fontSize:"0.9rem",maxWidth:380,lineHeight:1.6}}>
+                  Describe any Angular component in plain English. Get production-ready TypeScript, HTML and SCSS — validated against your design system.
+                </p>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,width:"100%",maxWidth:520}}>
+                {SUGGESTIONS.map((s,i)=>(
+                  <button key={i} onClick={()=>{setPrompt(s);textareaRef.current?.focus();}}
+                    style={{padding:"12px 14px",borderRadius:10,border:"1px solid rgba(255,255,255,0.06)",
+                      background:"rgba(255,255,255,0.02)",color:"#64748b",fontSize:"0.8rem",
+                      cursor:"pointer",textAlign:"left",lineHeight:1.4,transition:"all .2s"}}>
+                    {s}
+                  </button>
+                ))}
+              </div>
+              <div style={{display:"flex",gap:16,color:"#1e293b",fontSize:"0.78rem"}}>
+                <span>⚡ Groq + Llama 3.3</span>
+                <span>·</span>
+                <span>🔍 Auto-validation</span>
+                <span>·</span>
+                <span>↺ Self-correction</span>
               </div>
             </div>
           )}
