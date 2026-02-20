@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "name": "Pythrust Design System"
+  },
+  "colors": {
+    "primary": "#6366f1",
+    "primary-dark": "#4f46e5",
+    "primary-light": "#a5b4fc",
+    "secondary": "#06b6d4",
+    "secondary-dark": "#0891b2",
+    "accent": "#f59e0b",
+    "success": "#10b981",
+    "warning": "#f59e0b",
+    "error": "#ef4444",
+    "neutral-900": "#111827",
+    "neutral-800": "#1f2937",
+    "neutral-700": "#374151",
+    "neutral-600": "#4b5563",
+    "neutral-400": "#9ca3af",
+    "neutral-200": "#e5e7eb",
+    "neutral-100": "#f3f4f6",
+    "neutral-50": "#f9fafb",
+    "white": "#ffffff",
+    "black": "#000000"
+  },
+  "typography": {
+    "font-family": "'Inter', sans-serif",
+    "font-size-xs": "0.75rem",
+    "font-size-sm": "0.875rem",
+    "font-size-base": "1rem",
+    "font-size-lg": "1.125rem",
+    "font-size-xl": "1.25rem",
+    "font-size-2xl": "1.5rem",
+    "font-size-3xl": "1.875rem",
+    "font-weight-normal": "400",
+    "font-weight-medium": "500",
+    "font-weight-semibold": "600",
+    "font-weight-bold": "700",
+    "line-height-tight": "1.25",
+    "line-height-normal": "1.5",
+    "line-height-relaxed": "1.75"
+  },
+  "spacing": {
+    "spacing-1": "0.25rem",
+    "spacing-2": "0.5rem",
+    "spacing-3": "0.75rem",
+    "spacing-4": "1rem",
+    "spacing-6": "1.5rem",
+    "spacing-8": "2rem",
+    "spacing-12": "3rem",
+    "spacing-16": "4rem"
+  },
+  "borders": {
+    "border-radius-sm": "4px",
+    "border-radius": "8px",
+    "border-radius-lg": "12px",
+    "border-radius-xl": "16px",
+    "border-radius-full": "9999px",
+    "border-width": "1px",
+    "border-width-2": "2px",
+    "border-color": "#e5e7eb"
+  },
+  "shadows": {
+    "shadow-sm": "0 1px 2px rgba(0,0,0,0.05)",
+    "shadow": "0 2px 8px rgba(0,0,0,0.10)",
+    "shadow-md": "0 4px 16px rgba(0,0,0,0.12)",
+    "shadow-lg": "0 8px 32px rgba(0,0,0,0.15)",
+    "shadow-xl": "0 16px 48px rgba(0,0,0,0.20)",
+    "shadow-glass": "0 8px 32px rgba(99,102,241,0.15)"
+  },
+  "effects": {
+    "glassmorphism-bg": "rgba(255,255,255,0.15)",
+    "glassmorphism-blur": "blur(12px)",
+    "glassmorphism-border": "1px solid rgba(255,255,255,0.25)",
+    "transition-fast": "150ms ease",
+    "transition-base": "250ms ease",
+    "transition-slow": "400ms ease",
+    "opacity-disabled": "0.5"
+  },
+  "breakpoints": {
+    "sm": "640px",
+    "md": "768px",
+    "lg": "1024px",
+    "xl": "1280px"
+  }
+}

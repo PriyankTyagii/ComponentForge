@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.pyc
+venv/
+.env
+
+# Generated output
+output/
+!output/.gitkeep
+
+# Node
+preview_app/node_modules/
+preview_app/.next/
+
+# OS
+.DS_Store
+Thumbs.db
