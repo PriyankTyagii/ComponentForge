@@ -4,8 +4,6 @@
 
 **Live Demo → [component-forge-beige.vercel.app](https://component-forge-beige.vercel.app)**
 
-Built for Pythrust Technologies — Generative AI Engineer Intern Assignment.
-
 ---
 
 ## What it does
@@ -159,7 +157,7 @@ npm run dev
 # Open http://localhost:3000
 ```
 
-Enter your free Groq API key in the UI. Never stored server-side.
+Enter your free Groq API key in the UI. Keys are never stored server-side.
 
 ---
 
@@ -204,5 +202,5 @@ python main.py --output-dir ./out    # Custom output directory
 
 - Target Angular project has Tailwind CSS and Angular Material installed
 - Python 3.10 or higher
-- GROQ_API_KEY set as environment variable
-- Inter font available via Google Fonts in global stylesheet
+- `GROQ_API_KEY` set as an environment variable
+- Inter font available via Google Fonts in the global stylesheet
